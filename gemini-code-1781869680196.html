@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joyeux Anniversaire - Le Défi Ultime !</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            background-color: #fce4ec;
+            color: #333;
+            padding: 20px;
+            overflow-x: hidden;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        h1, h2 { color: #d81b60; margin-top: 20px;}
+        .instructions { font-size: 1.1em; margin-bottom: 20px; }
+
+        /* --- ÉTAPES GÉNÉRIQUES --- */
+        .game-step {
+            display: none;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .btn-action {
+            padding: 15px 35px;
+            font-size: 18px;
+            background-color: #e91e63;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(233, 30, 99, 0.3);
+            transition: background-color 0.2s;
+            margin-top: 15px;
+        }
+        .btn-action:hover { background-color: #c2185b; }
+        .btn-next { background-color: #4CAF50; }
+        .btn-next:hover { background-color: #388E3C; }
+
+        .error-text { color: red; font-weight: bold; margin-top: 15px; line-height: 1.5; }
+        .success-text { color: #4CAF50; font-weight: bold; margin-top: 15px; line-height: 1.5; }
+
+        /* --- GESTION STRICTE DES IMAGES --- */
+        /* Les images dans les grilles (Chats et Villes) */
+        .grid-img { 
+            width: 100%; 
+            height: 150px; 
+            object-fit: cover; /* Empêche la déformation */
+            display: block; 
+        }
+
+        /* L'image de l'éléphant */
+        .elephant-img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%; /* Image ronde */
+            margin: 15px auto;
+            display: block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        /* L'image qui bouge (Étape 2) */
+        #moving-target {
+            position: absolute; 
+            width: 120px; 
+            height: 120px; 
+            border-radius: 50%;
+            object-fit: cover; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+            cursor: pointer;
+            transition: top 0.2s, left 0.2s;
+        }
+
+        /* --- ÉTAPE 1 : GRILLE & BOUTON FUYANT --- */
+        #step1-selection { display: block; }
+        .cat-grid, .city-grid { display: grid; gap: 15px; max-width: 600px; margin: 0 auto 40px auto; }
+        .cat-grid { grid-template-columns: repeat(3, 1fr); }
+        .city-grid { grid-template-columns: repeat(2, 1fr); max-width: 400px; }
+
+        .selectable-container {
+            position: relative; cursor: pointer; border-radius: 15px; overflow: hidden;
+            transition: transform 0.2s ease; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border: 5px solid transparent; 
+        }
+        .selectable-container:hover { transform: scale(1.03); }
+        .selectable-container.selected { border-color: #e91e63; box-shadow: 0 0 15px rgba(233, 30, 99, 0.5); }
+
+        #validate-btn {
+            display: none; position: absolute; left: 50%; transform: translateX(-50%);
+            transition: top 0.2s, left 0.2s; z-index: 100;
+        }
+
+        /* --- ÉTAPE 2 : LE CLIQUEUR (0.9s) --- */
+        #step2-clicker {
+            display: none; height: 100vh; width: 100vw; position: fixed; top: 0; left: 0;
+            background-color: #fce4ec; z-index: 200;
+        }
+        #click-header { position: absolute; top: 20px; width: 100%; text-align: center; }
+        #click-counter { font-size: 2.5em; font-weight: bold; color: #e91e63; }
+
+        /* --- ÉTAPE 3, 4, 5 : INPUTS --- */
+        input[type="text"], input[type="number"] {
+            padding: 10px; font-size: 1.1em; width: 80%; text-align: center;
+            border: 2px solid #f8bbd0; border-radius: 10px; margin: 20px 0;
+        }
+
+        /* --- ÉTAPE 6 : MEMORY GAME --- */
+        .memory-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0;
+        }
+        .memory-card {
+            width: 100%; height: 100px; background-color: #e91e63; border-radius: 10px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden; position: relative;
+        }
+        /* Images dans le memory fixes aussi */
+        .memory-card img {
+            width: 100%; height: 100px; object-fit: cover; display: none; 
+        }
+        .memory-card.face-up img { display: block; }
+        .memory-card.face-up { background-color: white; }
+        .memory-card.matched { visibility: hidden; }
+
+        /* --- ÉTAPE 7 : BOUTONS INVERSÉS --- */
+        .tc-buttons {
+            display: flex; justify-content: center; gap: 20px; margin-top: 30px; position: relative; height: 60px;
+        }
+        .tc-btn {
+            padding: 15px 30px; font-size: 16px; font-weight: bold; color: white; border: none;
+            border-radius: 10px; cursor: pointer; position: absolute; transition: left 0.2s ease;
+        }
+        #btn-accept { background-color: #4CAF50; left: 10%; }
+        #btn-refuse { background-color: #F44336; left: 60%; }
+
+        /* --- ÉTAPE 8 : BARRES DE CHARGEMENT --- */
+        .progress-container {
+            width: 100%; background-color: #f8bbd0; border-radius: 20px; margin: 20px 0;
+            height: 40px; overflow: hidden; position: relative;
+        }
+        .progress-bar { height: 100%; width: 0%; background-color: #e91e63; transition: width 0.3s ease; }
+        #manual-loading-container { display: none; margin-top: 20px; }
+        .manual-interaction-zone { cursor: pointer; }
+        #progress-bar-manual { background-color: #ff9800; }
+
+        /* --- ÉTAPE 9 : LA RÉVÉLATION --- */
+        .address-box {
+            background-color: #f8bbd0; padding: 20px; border-radius: 10px;
+            margin: 20px 0; font-family: monospace; font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ÉTAPE 1 -->
+    <div id="step1-selection">
+        <h1>Quel est le chat le plus mignon ? 🐾</h1>
+        <p class="instructions">Sélectionne ton préféré pour valider.</p>
+        <div class="cat-grid">
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/400/400')">
+                <img src="https://placekitten.com/200/200" class="grid-img" alt="Chat">
+            </div>
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/401/401')">
+                <img src="https://placekitten.com/201/200" class="grid-img" alt="Chat">
+            </div>
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/402/402')">
+                <img src="https://placekitten.com/202/200" class="grid-img" alt="Chat">
+            </div>
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/403/403')">
+                <img src="https://placekitten.com/200/201" class="grid-img" alt="Chat">
+            </div>
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/404/404')">
+                <img src="https://placekitten.com/200/202" class="grid-img" alt="Chat">
+            </div>
+            <div class="selectable-container" onclick="selectCat(this, 'https://placekitten.com/405/405')">
+                <img src="https://placekitten.com/201/201" class="grid-img" alt="Chat">
+            </div>
+        </div>
+        <button id="validate-btn" class="btn-action" onclick="startClickerGame()">Valider mon choix !</button>
+    </div>
+
+    <!-- ÉTAPE 2 -->
+    <div id="step2-clicker">
+        <div id="click-header">
+            <h1>ATTRAPE-MOI !</h1>
+            <p>Clique 10 fois sur l'image !</p>
+            <div id="click-counter">0 / 10</div>
+        </div>
+        <img src="" id="moving-target" onclick="registerClick()">
+    </div>
+
+    <!-- ÉTAPE 3 -->
+    <div id="step3-history" class="game-step">
+        <h2>Un peu de culture... ⚔️</h2>
+        <p>En quelle année a eu lieu la Révolution française ?</p>
+        <input type="number" id="history-answer" placeholder="Année...">
+        <br>
+        <button class="btn-action" onclick="checkHistoryDate()">Valider la date</button>
+        <p id="history-error" class="error-text" style="display:none;">Mauvaise réponse, essaie encore !</p>
+    </div>
+
+    <!-- ÉTAPE 4 -->
+    <div id="step4-city" class="game-step">
+        <h2>Dernier dilemme... 🌍</h2>
+        <p>Quelle est la plus belle ville du monde ?</p>
+        <div class="city-grid">
+            <div class="selectable-container" onclick="selectCity('Paris', this)">
+                <img src="https://placehold.co/200x150/cccccc/333333?text=Paris" class="grid-img" alt="Paris">
+            </div>
+            <div class="selectable-container" onclick="selectCity('Marseille', this)">
+                <img src="https://placehold.co/200x150/cccccc/333333?text=Marseille" class="grid-img" alt="Marseille">
+            </div>
+        </div>
+        <button id="btn-city-validate" class="btn-action" onclick="checkCityChoice()">Valider la ville</button>
+        <div id="city-result-zone" style="display:none;">
+            <p id="city-msg"></p>
+            <button class="btn-action btn-next" onclick="goToNext('step4-city', 'step5-captcha')">Passer à l'étape suivante</button>
+        </div>
+    </div>
+
+    <!-- ÉTAPE 5 -->
+    <div id="step5-captcha" class="game-step">
+        <h2>Vérification de sécurité 🤖</h2>
+        <p>Recopie <strong>exactement</strong> la phrase suivante :</p>
+        <blockquote style="font-style: italic; color: #d81b60;">Tu es la meilleure personne au monde.</blockquote>
+        <input type="text" id="captcha-answer" placeholder="Tape la phrase ici...">
+        <br>
+        <button class="btn-action" onclick="checkCaptcha()">Vérifier</button>
+        <p id="captcha-error" class="error-text" style="display:none;">Erreur de frappe ! Recommence.</p>
+    </div>
+
+    <!-- ÉTAPE 6 : LE JEU DE MÉMOIRE (AVEC L'ÉLÉPHANT) -->
+    <div id="step6-memory" class="game-step">
+        <h2>Oups, contrôle de mémoire ! 🧠</h2>
+        <p id="memory-instructions">Retiens bien l'emplacement des chats. Les cartes vont se retourner dans <strong id="memory-timer">3</strong> secondes...</p>
+        
+        <div class="memory-grid" id="memory-grid">
+            <!-- Les cartes sont générées en JavaScript -->
+        </div>
+        
+        <div id="memory-success" style="display:none;">
+            <!-- L'image de l'éléphant, fixée via CSS -->
+            <img src="https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=300&q=80" alt="Éléphant" class="elephant-img">
+            
+            <p class="success-text">Bravo, tu as une mémoire d'éléphant !</p>
+            <button class="btn-action btn-next" onclick="goToNext('step6-memory', 'step7-tc')">Passer à l'étape suivante</button>
+        </div>
+    </div>
+
+    <!-- ÉTAPE 7 : LES CONDITIONS GÉNÉRALES -->
+    <div id="step7-tc" class="game-step">
+        <h2>Contrat d'Anniversaire 📜</h2>
+        <p>Acceptez-vous officiellement de vieillir d'un an supplémentaire et d'assumer toutes les responsabilités qui en découlent ?</p>
+        
+        <div class="tc-buttons">
+            <button id="btn-accept" class="tc-btn" onmouseover="swapButtons()">J'accepte</button>
+            <button id="btn-refuse" class="tc-btn" onclick="insultRefusal()">Je refuse</button>
+        </div>
+        <p id="tc-error" class="error-text" style="display:none;">Le refus n'est pas une option !</p>
+    </div>
+
+    <!-- ÉTAPE 8 : LA DOUBLE BARRE DE CHARGEMENT -->
+    <div id="step8-loading" class="game-step">
+        <h2>Génération du cadeau... 🎁</h2>
+        <button id="start-load-btn" class="btn-action" onclick="startLoading()">Générer</button>
+        
+        <div id="auto-loading-container">
+            <div class="progress-container">
+                <div id="progress-bar-auto" class="progress-bar"></div>
+            </div>
+            <p id="system-error-msg" class="error-text" style="display:none;">⚠️ Erreur : Serveur épuisé à 99%.</p>
+        </div>
+
+        <div id="manual-loading-container">
+            <p style="font-weight: bold; color: #d81b60;">Caressez la barre pour faire augmenter la progression :</p>
+            <div class="progress-container manual-interaction-zone" onmouseover="strokeManualBar()" onclick="strokeManualBar()">
+                <div id="progress-bar-manual" class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ÉTAPE 9 : LE CADEAU FINALE -->
+    <div id="step9-reward" class="game-step">
+        <h2>🎉 JOYEUX ANNIVERSAIRE ! 🎉</h2>
+        <p>Bravo, tu as passé toutes mes épreuves infernales !</p>
+        <p>Un magnifique bouquet de fleurs t'attend à Marseille ! 💐</p>
+        <div class="address-box">
+            📍 <strong>[Nom du Fleuriste]</strong><br>
+            [Adresse exacte]<br>
+            13000 Marseille<br>
+        </div>
+        <p>Gros bisous et profite bien de ta journée !</p>
+    </div>
+
+    <script>
+        // Fonction de transition
+        function goToNext(currentStepId, nextStepId) {
+            document.getElementById(currentStepId).style.display = 'none';
+            document.getElementById(nextStepId).style.display = 'block';
+            if(nextStepId === 'step6-memory') initMemoryGame();
+        }
+
+        // --- ÉTAPE 1 ---
+        let selectedCatUrl = '';
+        let buttonEscapes = 0, maxEscapes = 5;
+        const validateBtn = document.getElementById('validate-btn');
+        function selectCat(element, fullSizeUrl) {
+            document.querySelectorAll('#step1-selection .selectable-container').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCatUrl = fullSizeUrl;
+            validateBtn.style.display = 'block';
+            validateBtn.style.top = (element.parentElement.offsetTop + element.parentElement.offsetHeight + 30) + 'px';
+            buttonEscapes = 0; 
+        }
+        validateBtn.addEventListener('mouseover', function() {
+            if (buttonEscapes < maxEscapes) {
+                validateBtn.style.left = Math.max(20, Math.floor(Math.random() * (window.innerWidth - 150))) + 'px';
+                validateBtn.style.top = Math.max(20, Math.floor(Math.random() * (window.innerHeight - 60))) + 'px';
+                validateBtn.style.transform = 'none';
+                buttonEscapes++;
+            }
+        });
+
+        // --- ÉTAPE 2 ---
+        let clickCount = 0, targetClicks = 10, moveInterval;
+        const movingTarget = document.getElementById('moving-target');
+        function startClickerGame() {
+            goToNext('step1-selection', 'step2-clicker');
+            if (selectedCatUrl) movingTarget.src = selectedCatUrl;
+            moveImageRandomly();
+            moveInterval = setInterval(moveImageRandomly, 900); 
+        }
+        function moveImageRandomly() {
+            movingTarget.style.left = Math.max(10, Math.floor(Math.random() * (window.innerWidth - movingTarget.offsetWidth - 20))) + 'px';
+            movingTarget.style.top = Math.max(150, Math.floor(Math.random() * (window.innerHeight - movingTarget.offsetHeight - 20))) + 'px';
+        }
+        function registerClick() {
+            clickCount++;
+            document.getElementById('click-counter').innerText = `${clickCount} / ${targetClicks}`;
+            moveImageRandomly();
+            clearInterval(moveInterval);
+            moveInterval = setInterval(moveImageRandomly, 900);
+            if (clickCount >= targetClicks) {
+                clearInterval(moveInterval);
+                goToNext('step2-clicker', 'step3-history');
+            }
+        }
+
+        // --- ÉTAPE 3 ---
+        function checkHistoryDate() {
+            if (document.getElementById('history-answer').value === "1789") {
+                goToNext('step3-history', 'step4-city');
+            } else {
+                document.getElementById('history-error').style.display = 'block';
+            }
+        }
+
+        // --- ÉTAPE 4 ---
+        let selectedCity = '', marseilleAttempts = 0;
+        function selectCity(cityName, element) {
+            document.querySelectorAll('#step4-city .selectable-container').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCity = cityName;
+            document.getElementById('city-result-zone').style.display = 'none';
+            document.getElementById('btn-city-validate').style.display = 'inline-block';
+        }
+        function checkCityChoice() {
+            const resultZone = document.getElementById('city-result-zone');
+            const msgBox = document.getElementById('city-msg');
+            const btnValidate = document.getElementById('btn-city-validate');
+
+            if (selectedCity === '') return;
+
+            if (selectedCity === 'Paris') {
+                msgBox.innerHTML = "C'est bien, tu reconnais que Paris est la plus belle ville de France.";
+                msgBox.className = "success-text";
+                btnValidate.style.display = 'none'; 
+                resultZone.style.display = 'block'; 
+                resultZone.querySelector('.btn-next').style.display = 'inline-block'; 
+            } else if (selectedCity === 'Marseille') {
+                marseilleAttempts++;
+                if (marseilleAttempts < 3) {
+                    msgBox.innerHTML = "Non. Marseille n'est pas la plus belle ville de France.<br>Réessayez encore.";
+                    msgBox.className = "error-text"; 
+                    resultZone.style.display = 'block';
+                    resultZone.querySelector('.btn-next').style.display = 'none';
+                } else {
+                    msgBox.innerHTML = "Ok, je vois que vous adorez Marseille... On passe à l'étape d'après !";
+                    msgBox.className = "success-text";
+                    btnValidate.style.display = 'none'; 
+                    resultZone.style.display = 'block';
+                    resultZone.querySelector('.btn-next').style.display = 'inline-block';
+                }
+            }
+        }
+
+        // --- ÉTAPE 5 ---
+        function checkCaptcha() {
+            const inputField = document.getElementById('captcha-answer');
+            if (inputField.value === "Tu es la meilleure personne au monde.") {
+                goToNext('step5-captcha', 'step6-memory');
+            } else {
+                inputField.value = "";
+                document.getElementById('captcha-error').style.display = 'block';
+            }
+        }
+
+        // --- ÉTAPE 6 : MEMORY GAME ---
+        const memoryImages = [
+            'https://placekitten.com/200/200', 'https://placekitten.com/200/200',
+            'https://placekitten.com/201/200', 'https://placekitten.com/201/200',
+            'https://placekitten.com/202/200', 'https://placekitten.com/202/200',
+            'https://placekitten.com/200/201', 'https://placekitten.com/200/201'
+        ];
+        let hasFlippedCard = false, lockBoard = true;
+        let firstCard, secondCard, matchedPairs = 0;
+
+        function initMemoryGame() {
+            const grid = document.getElementById('memory-grid');
+            grid.innerHTML = '';
+            matchedPairs = 0; lockBoard = true;
+            memoryImages.sort(() => 0.5 - Math.random());
+
+            memoryImages.forEach((imgSrc) => {
+                const card = document.createElement('div');
+                card.classList.add('memory-card', 'face-up');
+                card.dataset.image = imgSrc;
+                
+                const img = document.createElement('img');
+                img.src = imgSrc;
+                card.appendChild(img);
+                
+                card.addEventListener('click', flipCard);
+                grid.appendChild(card);
+            });
+
+            let timeLeft = 3;
+            const timerEl = document.getElementById('memory-timer');
+            const countdown = setInterval(() => {
+                timeLeft--;
+                timerEl.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    document.getElementById('memory-instructions').innerText = "Trouve les paires !";
+                    document.querySelectorAll('.memory-card').forEach(c => c.classList.remove('face-up'));
+                    lockBoard = false; 
+                }
+            }, 1000);
+        }
+
+        function flipCard() {
+            if (lockBoard) return;
+            if (this === firstCard) return;
+
+            this.classList.add('face-up');
+            if (!hasFlippedCard) {
+                hasFlippedCard = true; firstCard = this; return;
+            }
+            secondCard = this;
+            checkForMatch();
+        }
+
+        function checkForMatch() {
+            firstCard.dataset.image === secondCard.dataset.image ? disableCards() : unflipCards();
+        }
+
+        function disableCards() {
+            setTimeout(() => {
+                firstCard.classList.add('matched');
+                secondCard.classList.add('matched');
+                resetBoard();
+                matchedPairs++;
+                if (matchedPairs === 4) {
+                    document.getElementById('memory-success').style.display = 'block';
+                }
+            }, 500);
+        }
+
+        function unflipCards() {
+            lockBoard = true;
+            setTimeout(() => {
+                firstCard.classList.remove('face-up');
+                secondCard.classList.remove('face-up');
+                resetBoard();
+            }, 1000); 
+        }
+
+        function resetBoard() {
+            [hasFlippedCard, lockBoard] = [false, false];
+            [firstCard, secondCard] = [null, null];
+        }
+
+        // --- ÉTAPE 7 : BOUTONS INVERSÉS ---
+        let swapCount = 0;
+        function swapButtons() {
+            if (swapCount < 3) {
+                const btnAccept = document.getElementById('btn-accept');
+                const btnRefuse = document.getElementById('btn-refuse');
+                
+                if (btnAccept.style.left === '10%' || btnAccept.style.left === '') {
+                    btnAccept.style.left = '60%'; btnRefuse.style.left = '10%';
+                } else {
+                    btnAccept.style.left = '10%'; btnRefuse.style.left = '60%';
+                }
+                swapCount++;
+            }
+        }
+        document.getElementById('btn-accept').addEventListener('click', function() {
+            goToNext('step7-tc', 'step8-loading');
+        });
+        function insultRefusal() {
+            document.getElementById('tc-error').style.display = 'block';
+        }
+
+        // --- ÉTAPE 8 : LA BARRE ---
+        let loadInterval, manualProgress = 0;
+        function startLoading() {
+            document.getElementById('start-load-btn').style.display = 'none';
+            const autoBar = document.getElementById('progress-bar-auto');
+            let width = 0;
+            
+            loadInterval = setInterval(function() {
+                if (width >= 99) {
+                    clearInterval(loadInterval);
+                    document.getElementById('auto-loading-container').style.display = 'none';
+                    document.getElementById('manual-loading-container').style.display = 'block';
+                } else {
+                    width += 5; autoBar.style.width = width + '%';
+                }
+            }, 200);
+        }
+
+        function strokeManualBar() {
+            const manualBar = document.getElementById('progress-bar-manual');
+            if (manualProgress < 100) {
+                manualProgress += 10; manualBar.style.width = manualProgress + '%';
+                if (manualProgress >= 100) {
+                    setTimeout(function() {
+                        goToNext('step8-loading', 'step9-reward');
+                    }, 500);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
